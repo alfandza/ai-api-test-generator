@@ -1,6 +1,10 @@
 # Environment variables
 .env
 
+# Composer
+/vendor/
+composer.lock
+
 # Logs
 *.log
 
@@ -14,3 +18,6 @@ Thumbs.db
 
 # Docker
 docker-compose.override.yml
+
+# PHP
+.phpunit.result.cache

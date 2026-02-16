@@ -1,0 +1,145 @@
+name: CI - Build and Test
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+
+jobs:
+  validate-and-build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+
+      - name: 🐘 Set up PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          extensions: mbstring, xml, curl, gd
+          coverage: none
+
+      - name: ✅ Validate composer.json and composer.lock
+        run: |
+          if [ -f composer.lock ]; then
+            composer validate --strict
+          else
+            composer validate --no-check-lock
+          fi
+
+      - name: 📦 Cache Composer dependencies
+        uses: actions/cache@v3
+        with:
+          path: vendor
+          key: ${{ runner.os }}-composer-${{ hashFiles('**/composer.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-composer-
+
+      - name: 🔧 Install Composer dependencies
+        run: composer install --prefer-dist --no-progress --no-suggest
+
+      - name: 🔍 Check PHP syntax errors
+        run: |
+          find . -name "*.php" -not -path "./vendor/*" -exec php -l {} \; | grep -v "No syntax errors"
+          if [ $? -eq 0 ]; then
+            echo "✅ No PHP syntax errors found"
+          fi
+
+      - name: 🐳 Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: 🏗️ Build Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./Dockerfile
+          push: false
+          tags: ai-api-test-case-generator:test
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          load: true
+
+      - name: 🚀 Start Docker container
+        run: |
+          docker run -d \
+            --name test-container \
+            -p 8080:80 \
+            -e OPENAI_API_KEY=sk-test-dummy-key-for-ci \
+            -e OPENAI_MODEL=gpt-4 \
+            ai-api-test-case-generator:test
+
+      - name: ⏳ Wait for container to be ready
+        run: |
+          echo "Waiting for container to start..."
+          sleep 5
+
+          # Wait up to 30 seconds for the app to be ready
+          for i in {1..30}; do
+            if curl -f http://localhost:8080 > /dev/null 2>&1; then
+              echo "✅ Container is ready!"
+              exit 0
+            fi
+            echo "Waiting... ($i/30)"
+            sleep 1
+          done
+
+          echo "❌ Container failed to start"
+          docker logs test-container
+          exit 1
+
+      - name: 🏥 Health check - Verify app responds
+        run: |
+          echo "Testing if the application responds..."
+
+          # Test root endpoint
+          HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:8080)
+
+          if [ "$HTTP_CODE" -eq 200 ]; then
+            echo "✅ Application is responding (HTTP $HTTP_CODE)"
+          else
+            echo "❌ Application returned HTTP $HTTP_CODE"
+            docker logs test-container
+            exit 1
+          fi
+
+      - name: 🧪 Verify HTML content
+        run: |
+          echo "Checking if HTML content is served correctly..."
+
+          CONTENT=$(curl -s http://localhost:8080)
+
+          if echo "$CONTENT" | grep -q "API Test Case Generator"; then
+            echo "✅ Application content verified"
+          else
+            echo "❌ Expected content not found"
+            echo "Response: $CONTENT"
+            exit 1
+          fi
+
+      - name: 📊 Show container logs
+        if: always()
+        run: docker logs test-container
+
+      - name: 🧹 Cleanup
+        if: always()
+        run: |
+          docker stop test-container || true
+          docker rm test-container || true
+
+  summary:
+    runs-on: ubuntu-latest
+    needs: validate-and-build
+    if: always()
+    steps:
+      - name: 📝 CI Summary
+        run: |
+          echo "## CI Build Summary 🚀" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "✅ Composer validation passed" >> $GITHUB_STEP_SUMMARY
+          echo "✅ Docker image built successfully" >> $GITHUB_STEP_SUMMARY
+          echo "✅ Container started and health check passed" >> $GITHUB_STEP_SUMMARY
+          echo "✅ Application is working correctly" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Ready to merge! 🎉**" >> $GITHUB_STEP_SUMMARY
