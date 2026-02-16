@@ -2,6 +2,7 @@
     "name": "app/ai-api-test-case-generator",
     "description": "AI-powered API test case generator using OpenAI",
     "type": "project",
+    "license": "MIT",
     "require": {
         "php": "^8.0",
         "vlucas/phpdotenv": "^5.5",
