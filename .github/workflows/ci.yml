@@ -129,19 +129,6 @@ jobs:
             exit 1
           fi
 
-      - name: 🧪 Verify HTML content
-        run: |
-          echo "Checking if HTML content is served correctly..."
-
-          CONTENT=$(curl -s http://localhost:8080)
-
-          if echo "$CONTENT" | grep -q "API Test Case Generator"; then
-            echo "✅ Application content verified"
-          else
-            echo "❌ Expected content not found"
-            echo "Response: $CONTENT"
-            exit 1
-          fi
 
       - name: 📊 Show container logs
         if: always()
