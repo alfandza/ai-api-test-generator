@@ -42,9 +42,14 @@ jobs:
 
       - name: 🔍 Check PHP syntax errors
         run: |
-          find . -name "*.php" -not -path "./vendor/*" -exec php -l {} \; | grep -v "No syntax errors"
-          if [ $? -eq 0 ]; then
+          echo "Checking PHP syntax..."
+          ERRORS=$(find . -name "*.php" -not -path "./vendor/*" -exec php -l {} \; 2>&1 | grep -v "No syntax errors")
+          if [ -z "$ERRORS" ]; then
             echo "✅ No PHP syntax errors found"
+          else
+            echo "❌ PHP syntax errors found:"
+            echo "$ERRORS"
+            exit 1
           fi
 
       - name: 🐳 Set up Docker Buildx
