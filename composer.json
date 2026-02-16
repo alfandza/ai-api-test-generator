@@ -1,0 +1,20 @@
+{
+    "name": "app/ai-api-test-case-generator",
+    "description": "AI-powered API test case generator using OpenAI",
+    "type": "project",
+    "require": {
+        "php": "^8.0",
+        "vlucas/phpdotenv": "^5.5",
+        "guzzlehttp/guzzle": "^7.5"
+    },
+    "autoload": {
+        "psr-4": {
+            "App\\": "src/"
+        }
+    },
+    "config": {
+        "optimize-autoloader": true,
+        "preferred-install": "dist",
+        "sort-packages": true
+    }
+}

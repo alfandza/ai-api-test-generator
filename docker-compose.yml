@@ -1,0 +1,24 @@
+version: '3.8'
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: api-test-generator
+    ports:
+      - "8080:80"
+    volumes:
+      - ./:/var/www/html
+      - ./public:/var/www/html/public
+    environment:
+      - APACHE_DOCUMENT_ROOT=/var/www/html/public
+    env_file:
+      - .env
+    restart: unless-stopped
+    networks:
+      - api-test-network
+
+networks:
+  api-test-network:
+    driver: bridge
