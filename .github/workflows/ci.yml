@@ -43,12 +43,32 @@ jobs:
       - name: 🔍 Check PHP syntax errors
         run: |
           echo "Checking PHP syntax..."
-          ERRORS=$(find . -name "*.php" -not -path "./vendor/*" -exec php -l {} \; 2>&1 | grep -v "No syntax errors")
-          if [ -z "$ERRORS" ]; then
+
+          # Find all PHP files excluding vendor
+          PHP_FILES=$(find . -name "*.php" -not -path "./vendor/*" -type f)
+
+          if [ -z "$PHP_FILES" ]; then
+            echo "⚠️ No PHP files found to check"
+            exit 0
+          fi
+
+          echo "Found PHP files:"
+          echo "$PHP_FILES"
+          echo ""
+
+          # Check syntax for each file
+          HAS_ERRORS=0
+          while IFS= read -r file; do
+            if ! php -l "$file" > /dev/null 2>&1; then
+              echo "❌ Syntax error in: $file"
+              php -l "$file"
+              HAS_ERRORS=1
+            fi
+          done <<< "$PHP_FILES"
+
+          if [ $HAS_ERRORS -eq 0 ]; then
             echo "✅ No PHP syntax errors found"
           else
-            echo "❌ PHP syntax errors found:"
-            echo "$ERRORS"
             exit 1
           fi
 
